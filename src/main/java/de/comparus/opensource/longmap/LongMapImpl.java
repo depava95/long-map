@@ -85,10 +85,10 @@ public class LongMapImpl<V> implements LongMap<V> {
     public V get(long key) {
         Entry<V> entry = entries[Math.abs((int) key % entries.length)];
         while (entry != null) {
-            if (entry.key == key) {
-                return entry.value;
+            if (entry.getKey() == key) {
+                return entry.getValue();
             }
-            entry = entry.next;
+            entry = entry.getNext();
         }
         return null;
     }
@@ -97,8 +97,8 @@ public class LongMapImpl<V> implements LongMap<V> {
         Entry<V> entry = entries[Math.abs((int) key % entries.length)];
         Entry<V> previousEntry = null;
         while (entry != null) {
-            if (entry.key == key) {
-                V returnedValue = entry.value;
+            if (entry.getKey() == key) {
+                V returnedValue = entry.getValue();
                 if(previousEntry != null) {
                     previousEntry.setNext(entry.getNext());
                     entry.setNext(null);
@@ -110,7 +110,7 @@ public class LongMapImpl<V> implements LongMap<V> {
                 return returnedValue;
             }
             previousEntry = entry;
-            entry = entry.next;
+            entry = entry.getNext();
         }
         return null;
     }
