@@ -11,30 +11,42 @@ import java.util.*;
 
 public class LongMapImpl<V> implements LongMap<V> {
 
+    /**
+     * The default value used for initialization size of array
+     * if none specified in the constructor
+     */
     private static final int DEFAULT_INITIAL_CAPACITY = 16;
 
+    /**
+     * The default value used in the case of the argument
+     * from a constructor is greater than 1 << 30
+     */
     private static final int MAXIMUM_CAPACITY = 1 << 30;
 
-    private static final float DEFAULT_LOAD_FACTOR = 0.75f;
+    /**
+     * Default load factor used for deciding when the size
+     * of the array should changes if none specified in the constructor
+     */
+    private static final float DEFAULT_LOAD_FACTOR = 0.85f;
 
     private long size;
     private final float loadFactor;
     private Entry<V>[] entries;
 
-    public LongMapImpl () {
+    public LongMapImpl() {
         this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
     }
 
-     public LongMapImpl (int initialCapacity) {
+    public LongMapImpl(int initialCapacity) {
         this(initialCapacity, DEFAULT_LOAD_FACTOR);
-     }
+    }
 
-     @SuppressWarnings("unchecked")
-    public LongMapImpl (int initialCapacity, float loadFactor) {
-        if(initialCapacity <= 0) {
+    @SuppressWarnings("unchecked")
+    public LongMapImpl(int initialCapacity, float loadFactor) {
+        if (initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be positive!");
         }
-        if(loadFactor <= 0) {
+        if (loadFactor <= 0) {
             throw new IllegalArgumentException("loadFactor must be positive!");
         }
         this.entries = new Entry[Math.min(initialCapacity, MAXIMUM_CAPACITY)];
@@ -42,13 +54,13 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     @SuppressWarnings("unchecked")
-    public LongMapImpl (LongMap<V> anotherMap) {
+    public LongMapImpl(LongMap<V> anotherMap) {
         this.loadFactor = DEFAULT_LOAD_FACTOR;
         int initialCapacity = anotherMap != null
                 ? Math.max((int) anotherMap.size(), DEFAULT_INITIAL_CAPACITY)
                 : DEFAULT_INITIAL_CAPACITY;
         this.entries = new Entry[initialCapacity];
-        if(anotherMap != null && anotherMap.size() > 0) {
+        if (anotherMap != null && anotherMap.size() > 0) {
             for (long key : anotherMap.keys()) {
                 this.put(key, anotherMap.get(key));
             }
@@ -59,19 +71,19 @@ public class LongMapImpl<V> implements LongMap<V> {
         Entry<V> entry = new Entry<>(key, value, null);
         int index = Math.abs((int) key % this.entries.length);
         Entry<V> existingEntry = entries[index];
-        if(existingEntry == null) {
+        if (existingEntry == null) {
             entries[index] = entry;
             size++;
             resizeIfNeeded();
         } else {
             while (existingEntry.getNext() != null) {
-                if(existingEntry.getKey() == key) {
+                if (existingEntry.getKey() == key) {
                     existingEntry.setValue(value);
                     return value;
                 }
                 existingEntry = existingEntry.getNext();
             }
-            if(existingEntry.getKey() == key) {
+            if (existingEntry.getKey() == key) {
                 existingEntry.setValue(value);
             } else {
                 existingEntry.setNext(entry);
@@ -99,13 +111,12 @@ public class LongMapImpl<V> implements LongMap<V> {
         while (entry != null) {
             if (entry.getKey() == key) {
                 V returnedValue = entry.getValue();
-                if(previousEntry != null) {
+                if (previousEntry != null) {
                     previousEntry.setNext(entry.getNext());
-                    entry.setNext(null);
                 } else {
-                    entries[(int) key % entries.length] = entry.getNext();
-                    entry.setNext(null);
+                    entries[Math.abs((int) key % entries.length)] = entry.getNext();
                 }
+                entry.setNext(null);
                 size--;
                 return returnedValue;
             }
@@ -120,13 +131,23 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public boolean containsKey(long key) {
-        return this.get(key) != null;
+        Entry<V> entry = entries[Math.abs((int) key % entries.length)];
+        if (entry == null) {
+            return false;
+        }
+        while (entry != null) {
+            if (entry.getKey() == key) {
+                return true;
+            }
+            entry = entry.getNext();
+        }
+        return false;
     }
 
     public boolean containsValue(V value) {
-        for(Entry<V> entry : entries) {
+        for (Entry<V> entry : entries) {
             while (entry != null) {
-                if(entry.getValue().equals(value)) {
+                if ((value == null && entry.getValue() == null) || entry.getValue().equals(value)) {
                     return true;
                 }
                 entry = entry.getNext();
@@ -138,8 +159,8 @@ public class LongMapImpl<V> implements LongMap<V> {
     public long[] keys() {
         long[] arrayOfKeys = new long[(int) size];
         int index = 0;
-        if(size > 0) {
-            for(Entry<V> entry : entries) {
+        if (size > 0) {
+            for (Entry<V> entry : entries) {
                 while (entry != null) {
                     arrayOfKeys[index] = entry.getKey();
                     entry = entry.getNext();
@@ -152,18 +173,19 @@ public class LongMapImpl<V> implements LongMap<V> {
 
     @SuppressWarnings("unchecked")
     public V[] values() {
-        List<V> listOfValues = new ArrayList<>();
-        if(size > 0) {
-            for(Entry<V> entry : entries) {
+        List<V> valuesList = new ArrayList<>();
+        if (size > 0) {
+            for (Entry<V> entry : entries) {
                 while (entry != null) {
-                    listOfValues.add(entry.getValue());
+                    valuesList.add(entry.getValue());
                     entry = entry.getNext();
                 }
             }
-            Optional<V> generic = listOfValues.stream().filter(Objects::nonNull).findAny();
-            if(generic.isPresent()) {
-                V[] genericArray = (V[]) Array.newInstance(generic.get().getClass(), (int) size);
-                return listOfValues.toArray(genericArray);
+            for (V object : valuesList) {
+                if (object != null) {
+                    V[] genericArray = (V[]) Array.newInstance(object.getClass(), (int) size);
+                    return valuesList.toArray(genericArray);
+                }
             }
         }
         return null;
@@ -180,17 +202,17 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     private void resizeIfNeeded() {
-        if(size > entries.length * loadFactor) {
+        if (size > entries.length * loadFactor) {
             entries = Arrays.copyOf(entries, entries.length * 2);
         }
     }
 
     @Override
     public String toString() {
-        if(size == 0) return "[]";
+        if (size == 0) return "[]";
         StringBuilder stringBuilder = new StringBuilder().append("[");
         for (Entry<V> entry : entries) {
-            if(entry != null) {
+            if (entry != null) {
                 while (entry != null) {
                     stringBuilder.append(entry.getKey())
                             .append("=").append(entry.getValue()).append(",");
