@@ -123,7 +123,37 @@ public class LongMapTest {
         longMap.put(1L, "TestCaseOne");
         longMap.put(2L, "TestCaseTwo");
         long actualSize = longMap.size();
-        Assert.assertEquals(2, actualSize);
+        Assert.assertEquals(expectedSize, actualSize);
+    }
+
+    @Test
+    public void shouldReturnContainsKeyTrueIfValueIsNull() {
+        longMap.put(1, null);
+        Assert.assertTrue(longMap.containsKey(1));
+    }
+
+    @Test
+    public void shouldRemoveElementInOneBucket() {
+        LongMap<Integer> map = new LongMapImpl<>(1, 10);
+        map.put(1, 1);
+        map.put(2, 2);
+        map.put(3, 3);
+        map.put(4, 4);
+        map.remove(3);
+        long[] expectKeyArray = {1, 2, 4};
+        Integer[] expectValueArray = {1, 2, 4};
+        long[] actualKeyArray = map.keys();
+        Integer[] actualValueArray = map.values();
+        Arrays.sort(actualKeyArray);
+        Arrays.sort(actualValueArray);
+        Assert.assertArrayEquals(expectKeyArray, actualKeyArray);
+        Assert.assertArrayEquals(expectValueArray, actualValueArray);
+    }
+
+    @Test
+    public void shouldReturnContainsValueTrueIfValueIsNull() {
+        longMap.put(1, null);
+        Assert.assertTrue(longMap.containsValue(null));
     }
 
     @Test
