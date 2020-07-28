@@ -1,9 +1,8 @@
 package de.comparus.opensource.longmap;
 
-import lombok.*;
-
 import java.lang.reflect.Array;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * @author Ihor Biedin
@@ -29,28 +28,36 @@ public class LongMapImpl<V> implements LongMap<V> {
      */
     private static final float DEFAULT_LOAD_FACTOR = 0.85f;
 
-    private long size;
+    private int size;
     private final float loadFactor;
+    private int threshold;
+    private Class<V> genericType;
     private Entry<V>[] entries;
 
-    public LongMapImpl() {
-        this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR);
+    public LongMapImpl(Class<V> clazz) {
+        this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, clazz);
     }
 
-    public LongMapImpl(int initialCapacity) {
-        this(initialCapacity, DEFAULT_LOAD_FACTOR);
+    public LongMapImpl(int initialCapacity, Class<V> clazz) {
+        this(initialCapacity, DEFAULT_LOAD_FACTOR, clazz);
     }
 
     @SuppressWarnings("unchecked")
-    public LongMapImpl(int initialCapacity, float loadFactor) {
+    public LongMapImpl(int initialCapacity, float loadFactor, Class<V> clazz) {
         if (initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be positive!");
         }
-        if (loadFactor <= 0) {
+        if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
             throw new IllegalArgumentException("loadFactor must be positive!");
         }
-        this.entries = new Entry[Math.min(initialCapacity, MAXIMUM_CAPACITY)];
+        if (clazz == null) {
+            throw new IllegalArgumentException("Class can't be null!");
+        }
+        initialCapacity = Math.min(initialCapacity, MAXIMUM_CAPACITY);
+        this.entries = new Entry[initialCapacity];
         this.loadFactor = loadFactor;
+        this.threshold = (int) loadFactor * initialCapacity;
+        this.genericType = clazz;
     }
 
     @SuppressWarnings("unchecked")
@@ -68,14 +75,21 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public V put(long key, V value) {
-        Entry<V> entry = new Entry<>(key, value, null);
-        int index = Math.abs((int) key % this.entries.length);
+        int index = calculateIndex(key);
         Entry<V> existingEntry = entries[index];
         if (existingEntry == null) {
-            entries[index] = entry;
-            size++;
-            resizeIfNeeded();
+            entries[index] = new Entry<>(key, value);
         } else {
+            if (existingEntry.getNext() == null) {
+                if(existingEntry.getKey() == key) {
+                    existingEntry.setValue(value);
+                    return value;
+                }
+                existingEntry.setNext(new Entry<>(key, value));
+                size++;
+                resizeIfNeeded();
+                return value;
+            }
             while (existingEntry.getNext() != null) {
                 if (existingEntry.getKey() == key) {
                     existingEntry.setValue(value);
@@ -83,19 +97,22 @@ public class LongMapImpl<V> implements LongMap<V> {
                 }
                 existingEntry = existingEntry.getNext();
             }
-            if (existingEntry.getKey() == key) {
-                existingEntry.setValue(value);
-            } else {
-                existingEntry.setNext(entry);
-                size++;
-                resizeIfNeeded();
-            }
+            existingEntry.setNext(new Entry<>(key, value));
         }
+        size++;
+        resizeIfNeeded();
         return value;
     }
 
     public V get(long key) {
-        Entry<V> entry = entries[Math.abs((int) key % entries.length)];
+        Entry<V> entry = entries[calculateIndex(key)];
+        if (entry == null) {
+            return null;
+        }
+        if (entry.getKey() == key) {
+            return entry.getValue();
+        }
+        entry = entry.getNext();
         while (entry != null) {
             if (entry.getKey() == key) {
                 return entry.getValue();
@@ -105,8 +122,12 @@ public class LongMapImpl<V> implements LongMap<V> {
         return null;
     }
 
+    private int calculateIndex(long key) {
+        return Math.abs((int) key % entries.length);
+    }
+
     public V remove(long key) {
-        Entry<V> entry = entries[Math.abs((int) key % entries.length)];
+        Entry<V> entry = entries[calculateIndex(key)];
         Entry<V> previousEntry = null;
         while (entry != null) {
             if (entry.getKey() == key) {
@@ -114,7 +135,7 @@ public class LongMapImpl<V> implements LongMap<V> {
                 if (previousEntry != null) {
                     previousEntry.setNext(entry.getNext());
                 } else {
-                    entries[Math.abs((int) key % entries.length)] = entry.getNext();
+                    entries[calculateIndex(key)] = entry.getNext();
                 }
                 entry.setNext(null);
                 size--;
@@ -131,10 +152,14 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public boolean containsKey(long key) {
-        Entry<V> entry = entries[Math.abs((int) key % entries.length)];
+        Entry<V> entry = entries[calculateIndex(key)];
         if (entry == null) {
             return false;
         }
+        if (entry.getKey() == key) {
+            return true;
+        }
+        entry = entry.getNext();
         while (entry != null) {
             if (entry.getKey() == key) {
                 return true;
@@ -145,9 +170,21 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public boolean containsValue(V value) {
-        for (Entry<V> entry : entries) {
+        if (size == 0) {
+            return false;
+        }
+        return Arrays.stream(entries).anyMatch(entry -> isContainsValue(entry, value));
+    }
+
+    private boolean isContainsValue(Entry<V> entry, V value) {
+        if (entry == null) {
+            return false;
+        }
+        if (entry.getNext() == null) {
+            return Objects.equals(entry.getValue(), value);
+        } else {
             while (entry != null) {
-                if ((value == null && entry.getValue() == null) || entry.getValue().equals(value)) {
+                if (Objects.equals(entry.getValue(), value)) {
                     return true;
                 }
                 entry = entry.getNext();
@@ -157,38 +194,47 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public long[] keys() {
-        long[] arrayOfKeys = new long[(int) size];
-        int index = 0;
+        long[] keys = new long[size];
         if (size > 0) {
+            int index = 0;
             for (Entry<V> entry : entries) {
-                while (entry != null) {
-                    arrayOfKeys[index] = entry.getKey();
-                    entry = entry.getNext();
-                    index++;
+                if (entry != null) {
+                    if (entry.getNext() == null) {
+                        keys[index++] = entry.getKey();
+                    } else {
+                        while (entry != null) {
+                            keys[index++] = entry.getKey();
+                            entry = entry.getNext();
+                        }
+                    }
                 }
             }
         }
-        return arrayOfKeys;
+        return keys;
     }
 
     @SuppressWarnings("unchecked")
     public V[] values() {
-        List<V> valuesList = new ArrayList<>();
+        V[] values = (V[]) Array.newInstance(genericType, size);
         if (size > 0) {
+            int index = 0;
             for (Entry<V> entry : entries) {
-                while (entry != null) {
-                    valuesList.add(entry.getValue());
-                    entry = entry.getNext();
+                if (index == size) {
+                    return values;
                 }
-            }
-            for (V object : valuesList) {
-                if (object != null) {
-                    V[] genericArray = (V[]) Array.newInstance(object.getClass(), (int) size);
-                    return valuesList.toArray(genericArray);
+                if (entry != null) {
+                    if (entry.getNext() == null) {
+                        values[index++] = entry.getValue();
+                    } else {
+                        while (entry != null) {
+                            values[index++] = entry.getValue();
+                            entry = entry.getNext();
+                        }
+                    }
                 }
             }
         }
-        return null;
+        return values;
     }
 
     public long size() {
@@ -202,35 +248,58 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     private void resizeIfNeeded() {
-        if (size > entries.length * loadFactor) {
-            entries = Arrays.copyOf(entries, entries.length * 2);
+        if (size > threshold && size < MAXIMUM_CAPACITY) {
+            int nextSize = entries.length * 2;
+            entries = Arrays.copyOf(entries, Math.min(nextSize, MAXIMUM_CAPACITY));
+            threshold = (int) (entries.length * loadFactor);
         }
     }
 
     @Override
     public String toString() {
-        if (size == 0) return "[]";
+        if (size == 0) {
+            return "[]";
+        }
         StringBuilder stringBuilder = new StringBuilder().append("[");
         for (Entry<V> entry : entries) {
-            if (entry != null) {
-                while (entry != null) {
-                    stringBuilder.append(entry.getKey())
-                            .append("=").append(entry.getValue()).append(",");
-                    entry = entry.getNext();
-                }
+            while (entry != null) {
+                stringBuilder.append(entry.toString()).append(",");
+                entry = entry.getNext();
             }
         }
         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
         return stringBuilder.append("]").toString();
     }
 
-    @Data
-    @AllArgsConstructor
-    @EqualsAndHashCode
     static class Entry<V> {
-        private long key;
+        private final long key;
         private V value;
         private Entry<V> next;
+
+        public long getKey() {
+            return key;
+        }
+
+        public V getValue() {
+            return value;
+        }
+
+        public Entry<V> getNext() {
+            return next;
+        }
+
+        public void setValue(V value) {
+            this.value = value;
+        }
+
+        public void setNext(Entry<V> next) {
+            this.next = next;
+        }
+
+        public Entry(long key, V value) {
+            this.key = key;
+            this.value = value;
+        }
 
         @Override
         public String toString() {

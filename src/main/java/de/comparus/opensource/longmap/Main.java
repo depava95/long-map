@@ -6,9 +6,8 @@ import java.util.Map;
 public class Main {
 
     public static void main(String[] args) {
-        LongMap<String> longMap = new LongMapImpl<>();
+        LongMap<String> longMap = new LongMapImpl<>(String.class);
         Map<Long, String> hashMap = new HashMap<>();
-
         long longMapStartWrite = System.currentTimeMillis();
         for (long i = 0; i < 100_000L; i++) {
             longMap.put(i, String.valueOf(i));
@@ -33,18 +32,29 @@ public class Main {
         }
         System.out.println("HashMap reading time: " + (System.currentTimeMillis() - hashMapStartRead));
 
-        long longMapStartContains = System.currentTimeMillis();
+        long longMapStartContainsKey = System.currentTimeMillis();
         for (long i = 0; i < 10_000L; i++) {
             longMap.containsKey(i);
-            longMap.containsValue(String.valueOf(i));
         }
-        System.out.println("LongMap containing(key/value) time: " + (System.currentTimeMillis() - longMapStartContains));
+        System.out.println("LongMap containsKey time: " + (System.currentTimeMillis() - longMapStartContainsKey));
 
-        long hashMapStartContains = System.currentTimeMillis();
+        long hashMapStartContainsKey = System.currentTimeMillis();
         for (long i = 0; i < 10_000L; i++) {
             hashMap.containsKey(i);
+        }
+        System.out.println("HashMap containsKey time: " + (System.currentTimeMillis() - hashMapStartContainsKey));
+
+        long longMapStartContainsValue = System.currentTimeMillis();
+        for (long i = 0; i < 10_000L; i++) {
+            longMap.containsValue(String.valueOf(i));
+        }
+        System.out.println("LongMap containsValue time: " + (System.currentTimeMillis() - longMapStartContainsValue));
+
+        long hashMapStartContainsValue = System.currentTimeMillis();
+        for (long i = 0; i < 10_000L; i++) {
             hashMap.containsValue(String.valueOf(i));
         }
-        System.out.println("HashMap containing(key/value) time: " + (System.currentTimeMillis() - hashMapStartContains));
+        System.out.println("HashMap containsValue time: " + (System.currentTimeMillis() - hashMapStartContainsValue));
+
     }
 }

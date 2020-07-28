@@ -11,7 +11,7 @@ import java.util.Arrays;
 @RunWith(JUnit4.class)
 public class LongMapTest {
 
-    static LongMap<String> longMap = new LongMapImpl<>();
+    static LongMap<String> longMap = new LongMapImpl<>(String.class);
 
     @Before
     public void setUp() {
@@ -134,7 +134,7 @@ public class LongMapTest {
 
     @Test
     public void shouldRemoveElementInOneBucket() {
-        LongMap<Integer> map = new LongMapImpl<>(1, 10);
+        LongMap<Integer> map = new LongMapImpl<>(1, 10, Integer.class);
         map.put(1, 1);
         map.put(2, 2);
         map.put(3, 3);
@@ -157,18 +157,20 @@ public class LongMapTest {
     }
 
     @Test
-    public void shouldReturnNullWhenGettingValues() {
+    public void shouldReturnNotEmptyArrayWhenGettingValues() {
         longMap.put(22, null);
-        Assert.assertNull(longMap.values());
+        String[] expectedArray = new String[1];
+        Assert.assertArrayEquals(expectedArray, longMap.values());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionBecauseOfCapacity() {
-        new LongMapImpl<>(0);
+        new LongMapImpl<>(0, String.class);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionBecauseOfLoadFactor() {
-        new LongMapImpl<>(300, -2);
+        new LongMapImpl<>(300, -2, String.class);
     }
+
 }
