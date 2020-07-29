@@ -132,7 +132,15 @@ public class LongMapImpl<V> implements LongMap<V> {
     }
 
     public V remove(long key) {
-        Entry<V> entry = entries[calculateIndex(key)];
+        int index = calculateIndex(key);
+        Entry<V> entry = entries[index];
+        if(entry == null) return null;
+        if(entry.getNext() == null) {
+            V tempValue = entry.getValue();
+            entries[index] = null;
+            size--;
+            return tempValue;
+        }
         Entry<V> previousEntry = null;
         while (entry != null) {
             if (entry.getKey() == key) {
@@ -140,7 +148,7 @@ public class LongMapImpl<V> implements LongMap<V> {
                 if (previousEntry != null) {
                     previousEntry.setNext(entry.getNext());
                 } else {
-                    entries[calculateIndex(key)] = entry.getNext();
+                    entries[index] = entry.getNext();
                 }
                 entry.setNext(null);
                 size--;

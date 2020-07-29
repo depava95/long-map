@@ -9,16 +9,17 @@ import java.util.stream.LongStream;
 
 public class Main {
 
-    /**
-     * jdk1.8.0_231
-     * LongMap writing time: 39
+    /** --jdk1.8.0_231--
+     * LongMap writing time: 38
      * HashMap writing time: 53
-     * LongMap reading time: 11
-     * HashMap reading time: 11
-     * LongMap containsKey time: 11
-     * HashMap containsKey time: 12
-     * LongMap containsValue time: 108600
-     * HashMap containsValue time: 107942
+     * LongMap reading time: 14
+     * HashMap reading time: 9
+     * LongMap containsKey time: 13
+     * HashMap containsKey time: 9
+     * HashMap containsValue time: 8597
+     * LongMap containsValue time: 1490
+     * LongMap removing time: 10
+     * HashMap removing time: 12
     * */
 
     public static void main(String[] args) {
@@ -69,16 +70,27 @@ public class Main {
         System.out.println("HashMap containsKey time: " + (System.currentTimeMillis() - hashMapStartContainsKey));
 
         long longMapStartContainsValue = System.currentTimeMillis();
-        for (Long randomNumber : randomNumbers) {
+        for (Long randomNumber : randomNumbers.stream().limit(10_000).collect(Collectors.toList())) {
             longMap.containsValue(String.valueOf(randomNumber));
         }
         System.out.println("LongMap containsValue time: " + (System.currentTimeMillis() - longMapStartContainsValue));
 
         long hashMapStartContainsValue = System.currentTimeMillis();
-        for (Long randomNumber : randomNumbers) {
+        for (Long randomNumber : randomNumbers.stream().limit(10_000).collect(Collectors.toList())) {
             hashMap.containsValue(String.valueOf(randomNumber));
         }
         System.out.println("HashMap containsValue time: " + (System.currentTimeMillis() - hashMapStartContainsValue));
 
+        long longMapStartRemove = System.currentTimeMillis();
+        for (Long randomNumber : randomNumbers) {
+            longMap.remove(randomNumber);
+        }
+        System.out.println("LongMap removing time: " + (System.currentTimeMillis() - longMapStartRemove));
+
+        long hashMapStartRemove = System.currentTimeMillis();
+        for (Long randomNumber : randomNumbers) {
+            hashMap.remove(randomNumber);
+        }
+        System.out.println("HashMap removing time: " + (System.currentTimeMillis() - hashMapStartRemove));
     }
 }
