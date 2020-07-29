@@ -11,7 +11,7 @@ import java.util.Arrays;
 @RunWith(JUnit4.class)
 public class LongMapTest {
 
-    static LongMap<String> longMap = new LongMapImpl<>(String.class);
+    static LongMap<String> longMap = new LongMapImpl<>();
 
     @Before
     public void setUp() {
@@ -133,8 +133,21 @@ public class LongMapTest {
     }
 
     @Test
+    public void shouldReturnAnotherMap() {
+        long[] arrayOfKeys = {1L, 2L, 3L};
+        String[] arrayOfValues = {"One", "Two", "Three"};
+        longMap.put(1, "One");
+        longMap.put(2, "Two");
+        longMap.put(3, "Three");
+        LongMap<String> copyMap = new LongMapImpl<>(longMap);
+        Assert.assertEquals(3, copyMap.size());
+        Assert.assertArrayEquals(arrayOfKeys, copyMap.keys());
+        Assert.assertArrayEquals(arrayOfValues, copyMap.values());
+    }
+
+    @Test
     public void shouldRemoveElementInOneBucket() {
-        LongMap<Integer> map = new LongMapImpl<>(1, 10, Integer.class);
+        LongMap<Integer> map = new LongMapImpl<>(1, 10);
         map.put(1, 1);
         map.put(2, 2);
         map.put(3, 3);
@@ -165,12 +178,12 @@ public class LongMapTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionBecauseOfCapacity() {
-        new LongMapImpl<>(0, String.class);
+        new LongMapImpl<>(0);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionBecauseOfLoadFactor() {
-        new LongMapImpl<>(300, -2, String.class);
+        new LongMapImpl<>(300, -0.75f);
     }
 
 }

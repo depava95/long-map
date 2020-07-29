@@ -31,38 +31,43 @@ public class LongMapImpl<V> implements LongMap<V> {
     private int size;
     private final float loadFactor;
     private int threshold;
-    private Class<V> genericType;
+    private final Class<?> componentType;
     private Entry<V>[] entries;
 
-    public LongMapImpl(Class<V> clazz) {
-        this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, clazz);
+    /**
+     * Varargs are used for generate array of generics.
+     * It isn't required to pass them
+     */
+    @SafeVarargs
+    public LongMapImpl(V... args) {
+        this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, args);
     }
 
-    public LongMapImpl(int initialCapacity, Class<V> clazz) {
-        this(initialCapacity, DEFAULT_LOAD_FACTOR, clazz);
+    @SafeVarargs
+    public LongMapImpl(Integer initialCapacity, V... args) {
+        this(initialCapacity, DEFAULT_LOAD_FACTOR, args);
     }
+
 
     @SuppressWarnings("unchecked")
-    public LongMapImpl(int initialCapacity, float loadFactor, Class<V> clazz) {
-        if (initialCapacity <= 0) {
+    public LongMapImpl(Integer initialCapacity, Float loadFactor, V... args) {
+        if (initialCapacity == null || initialCapacity <= 0) {
             throw new IllegalArgumentException("initialCapacity must be positive!");
         }
-        if (loadFactor <= 0 || Float.isNaN(loadFactor)) {
+        if (loadFactor == null || loadFactor <= 0 || Float.isNaN(loadFactor)) {
             throw new IllegalArgumentException("loadFactor must be positive!");
-        }
-        if (clazz == null) {
-            throw new IllegalArgumentException("Class can't be null!");
         }
         initialCapacity = Math.min(initialCapacity, MAXIMUM_CAPACITY);
         this.entries = new Entry[initialCapacity];
         this.loadFactor = loadFactor;
-        this.threshold = (int) loadFactor * initialCapacity;
-        this.genericType = clazz;
+        this.threshold = (int) (this.loadFactor * initialCapacity);
+        this.componentType = args.getClass().getComponentType();
     }
 
     @SuppressWarnings("unchecked")
-    public LongMapImpl(LongMap<V> anotherMap) {
+    public LongMapImpl(LongMap<V> anotherMap, V... args) {
         this.loadFactor = DEFAULT_LOAD_FACTOR;
+        this.componentType = args.getClass().getComponentType();
         int initialCapacity = anotherMap != null
                 ? Math.max((int) anotherMap.size(), DEFAULT_INITIAL_CAPACITY)
                 : DEFAULT_INITIAL_CAPACITY;
@@ -81,7 +86,7 @@ public class LongMapImpl<V> implements LongMap<V> {
             entries[index] = new Entry<>(key, value);
         } else {
             if (existingEntry.getNext() == null) {
-                if(existingEntry.getKey() == key) {
+                if (existingEntry.getKey() == key) {
                     existingEntry.setValue(value);
                     return value;
                 }
@@ -215,7 +220,7 @@ public class LongMapImpl<V> implements LongMap<V> {
 
     @SuppressWarnings("unchecked")
     public V[] values() {
-        V[] values = (V[]) Array.newInstance(genericType, size);
+        V[] values = (V[]) Array.newInstance(componentType, size);
         if (size > 0) {
             int index = 0;
             for (Entry<V> entry : entries) {
