@@ -127,6 +127,10 @@ public class LongMapImpl<V> implements LongMap<V> {
         return null;
     }
 
+    /**
+     * I don't use Long.hashcode 'cause the result
+     * is almost the same value as a plain long (excluding negative values)
+    * */
     private int calculateIndex(long key) {
         return Math.abs((int) key % entries.length);
     }
